@@ -1,0 +1,99 @@
+"""Vexa Decision Listener - Real-time meeting intelligence service.
+
+Subscribes to Vexa transcript streams and uses an LLM to detect
+decisions, action items, and architecture statements in real-time.
+"""
+
+import asyncio
+import logging
+import os
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sse_starlette.sse import EventSourceResponse
+
+from config import TrackerConfig, get_config, reset_config, save_config
+from listener import get_all_items, subscribe, unsubscribe
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+)
+
+app = FastAPI(
+    title="Vexa Decision Listener",
+    description="Real-time meeting intelligence: detects decisions, action items, and architecture statements from live transcripts.",
+    version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ── Config endpoints ───────────────────────────────────────────────
+
+
+@app.get("/config", response_model=TrackerConfig)
+async def get_tracker_config():
+    return get_config()
+
+
+@app.put("/config", response_model=TrackerConfig)
+async def update_tracker_config(cfg: TrackerConfig):
+    return save_config(cfg)
+
+
+@app.post("/config/reset", response_model=TrackerConfig)
+async def reset_tracker_config():
+    return reset_config()
+
+
+# ── Decisions endpoints ────────────────────────────────────────────
+
+
+@app.get("/decisions/{meeting_id}/all")
+async def get_decisions(meeting_id: str):
+    items = get_all_items(meeting_id)
+    return {"items": items}
+
+
+@app.get("/decisions/{meeting_id}")
+async def stream_decisions(meeting_id: str):
+    """SSE stream of real-time decisions for a meeting."""
+    q = subscribe(meeting_id)
+
+    async def event_generator():
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(q.get(), timeout=30.0)
+                    yield {"data": item}
+                except asyncio.TimeoutError:
+                    # Send keepalive comment
+                    yield {"comment": "keepalive"}
+        except asyncio.CancelledError:
+            pass
+        finally:
+            unsubscribe(meeting_id, q)
+
+    return EventSourceResponse(event_generator())
+
+
+# ── Health ─────────────────────────────────────────────────────────
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    port = int(os.getenv("PORT", "8765"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

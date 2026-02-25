@@ -1,0 +1,6 @@
+.env
+.env.keys
+__pycache__/
+*.pyc
+tracker_config.json
+.venv/

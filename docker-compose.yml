@@ -1,0 +1,12 @@
+services:
+  decision-listener:
+    build: .
+    ports:
+      - "${PORT:-8765}:8765"
+    environment:
+      - VEXA_API_URL=${VEXA_API_URL}
+      - VEXA_API_KEY=${VEXA_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-claude-haiku-4-5-20251001}
+      - PORT=8765
+    restart: unless-stopped
