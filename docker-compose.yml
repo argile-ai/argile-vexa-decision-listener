@@ -8,5 +8,6 @@ services:
       - VEXA_API_KEY=${VEXA_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - LLM_MODEL=${LLM_MODEL:-claude-haiku-4-5-20251001}
+      - API_KEY=${API_KEY}
       - PORT=8765
     restart: unless-stopped

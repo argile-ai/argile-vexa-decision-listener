@@ -22,14 +22,20 @@ The service runs on port **8765** by default.
 
 ## API
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/config` | Get tracker configuration |
-| `PUT` | `/config` | Update tracker configuration |
-| `POST` | `/config/reset` | Reset to default config |
-| `GET` | `/decisions/{meeting_id}` | SSE stream of real-time decisions |
-| `GET` | `/decisions/{meeting_id}/all` | Get all captured items for a meeting |
-| `GET` | `/health` | Health check |
+All endpoints except `/health` require a Bearer token via the `Authorization` header:
+
+```
+Authorization: Bearer <API_KEY>
+```
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/config` | Yes | Get tracker configuration |
+| `PUT` | `/config` | Yes | Update tracker configuration |
+| `POST` | `/config/reset` | Yes | Reset to default config |
+| `GET` | `/decisions/{meeting_id}` | Yes | SSE stream of real-time decisions |
+| `GET` | `/decisions/{meeting_id}/all` | Yes | Get all captured items for a meeting |
+| `GET` | `/health` | No | Health check |
 
 ## How It Works
 
@@ -48,6 +54,7 @@ Set via environment variables or `.env`:
 | `VEXA_API_KEY` | Yes | - | Vexa user API key |
 | `ANTHROPIC_API_KEY` | Yes | - | Anthropic API key for Claude |
 | `LLM_MODEL` | No | `claude-haiku-4-5-20251001` | Model to use |
+| `API_KEY` | Yes | - | Bearer token for API authentication |
 | `PORT` | No | `8765` | Listener port |
 
 ## License

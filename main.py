@@ -7,9 +7,11 @@ decisions, action items, and architecture statements in real-time.
 import asyncio
 import logging
 import os
+import secrets
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sse_starlette.sse import EventSourceResponse
 
 from config import TrackerConfig, get_config, reset_config, save_config
@@ -34,21 +36,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+API_KEY = os.getenv("API_KEY", "")
+_bearer = HTTPBearer()
+
+
+async def verify_api_key(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+) -> None:
+    if not API_KEY or not secrets.compare_digest(credentials.credentials, API_KEY):
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
 
 # ── Config endpoints ───────────────────────────────────────────────
 
 
-@app.get("/config", response_model=TrackerConfig)
+@app.get("/config", response_model=TrackerConfig, dependencies=[Depends(verify_api_key)])
 async def get_tracker_config():
     return get_config()
 
 
-@app.put("/config", response_model=TrackerConfig)
+@app.put("/config", response_model=TrackerConfig, dependencies=[Depends(verify_api_key)])
 async def update_tracker_config(cfg: TrackerConfig):
     return save_config(cfg)
 
 
-@app.post("/config/reset", response_model=TrackerConfig)
+@app.post("/config/reset", response_model=TrackerConfig, dependencies=[Depends(verify_api_key)])
 async def reset_tracker_config():
     return reset_config()
 
@@ -56,13 +68,13 @@ async def reset_tracker_config():
 # ── Decisions endpoints ────────────────────────────────────────────
 
 
-@app.get("/decisions/{meeting_id}/all")
+@app.get("/decisions/{meeting_id}/all", dependencies=[Depends(verify_api_key)])
 async def get_decisions(meeting_id: str):
     items = get_all_items(meeting_id)
     return {"items": items}
 
 
-@app.get("/decisions/{meeting_id}")
+@app.get("/decisions/{meeting_id}", dependencies=[Depends(verify_api_key)])
 async def stream_decisions(meeting_id: str):
     """SSE stream of real-time decisions for a meeting."""
     q = subscribe(meeting_id)
