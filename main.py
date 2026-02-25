@@ -9,7 +9,7 @@ import logging
 import os
 import secrets
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sse_starlette.sse import EventSourceResponse
@@ -37,13 +37,16 @@ app.add_middleware(
 )
 
 API_KEY = os.getenv("API_KEY", "")
-_bearer = HTTPBearer()
+_bearer = HTTPBearer(auto_error=False)
 
 
 async def verify_api_key(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    token: str | None = Query(None),
 ) -> None:
-    if not API_KEY or not secrets.compare_digest(credentials.credentials, API_KEY):
+    """Accept auth via Bearer header or ?token= query param (for EventSource)."""
+    provided = (credentials.credentials if credentials else None) or token
+    if not API_KEY or not provided or not secrets.compare_digest(provided, API_KEY):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
