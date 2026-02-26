@@ -28,9 +28,11 @@ app = FastAPI(
     version="0.1.0",
 )
 
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://meet.argile.ai").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
